@@ -137,12 +137,12 @@ public class RateLimiterFactoryTest {
     }
 
     @Test
-    public void permitLimiterTryAcquireTest() {
+    public void tryAcquireTest() {
         RateLimiterFactory factory = new RateLimiterFactory();
         RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter2", 1, redissonService.getRLock("testPermitLock2"), redisService);
         RateLimiter rateLimiter = factory.getPermitLimiter(config);
 
-        for (int i = 1; i <= 8; i++) {
+        for (int i = 1; i <= 10; i++) {
             if (rateLimiter.tryAcquire(0L)) {
                 System.out.println(i + ": success, left permit: " + rateLimiter.getBucket().getStoredPermits());
             } else {
@@ -159,13 +159,13 @@ public class RateLimiterFactoryTest {
     }
 
     @Test
-    public void newAcquireTest() {
+    public void acquireTest() {
         RateLimiterFactory factory = new RateLimiterFactory();
         RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter3", 2, redissonService.getRLock("testPermitLock3"), redisService);
         RateLimiter rateLimiter = factory.getPermitLimiter(config);
 
         for (int i = 1; i <= 5; i++) {
-            System.out.println("acquire time: " + rateLimiter.acquire() + "\n");
+            System.out.println("acquire time: " + rateLimiter.acquire());
         }
     }
 
