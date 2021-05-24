@@ -9,7 +9,6 @@ import org.redisson.api.RLock;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.math.LongMath.saturatedAdd;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.concurrent.TimeUnit.*;
@@ -19,7 +18,7 @@ import static java.util.concurrent.TimeUnit.*;
  */
 @Slf4j
 @Data
-public class PermitLimiter implements Limiter {
+public class RateLimiter implements Limiter {
     private final RedisService redisService;
 
     /**
@@ -45,7 +44,7 @@ public class PermitLimiter implements Limiter {
     /**
      * 构造函数, 读取配置数据
      */
-    public PermitLimiter(PermitLimiterConfig config) {
+    public RateLimiter(RateLimiterConfig config) {
         this.name = config.getName();
         this.permitsPerSecond = (config.getPermitsPerSecond() == 0L) ? 1000L : config.getPermitsPerSecond();
         this.maxPermits = config.getMaxPermits();

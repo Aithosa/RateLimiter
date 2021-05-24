@@ -1,8 +1,8 @@
 package com.demo.ratelimiter;
 
-import com.demo.ratelimiter.common.limiter.permitlimiter.PermitLimiter;
-import com.demo.ratelimiter.common.limiter.permitlimiter.PermitLimiterConfig;
-import com.demo.ratelimiter.common.limiter.permitlimiter.PermitLimiterFactory;
+import com.demo.ratelimiter.common.limiter.permitlimiter.RateLimiter;
+import com.demo.ratelimiter.common.limiter.permitlimiter.RateLimiterConfig;
+import com.demo.ratelimiter.common.limiter.permitlimiter.RateLimiterFactory;
 import com.demo.ratelimiter.redis.service.RedisService;
 import com.demo.ratelimiter.redis.service.RedissonService;
 
@@ -20,7 +20,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = RateLimiterApplication.class)
-public class PermitLimiterFactoryTest {
+public class RateLimiterFactoryTest {
     private static final int JOB_NUMS = 20;
 
     /**
@@ -59,15 +59,15 @@ public class PermitLimiterFactoryTest {
 
     @Test
     public void PermitLimiterTest() throws Exception {
-        PermitLimiterFactory factory = new PermitLimiterFactory();
-        PermitLimiterConfig config = new PermitLimiterConfig("permitLimiter", REQUEST_LIMIT_PER_SECONDS, redissonService.getRLock("permitLock"), redisService);
-        PermitLimiter permitLimiter = factory.getPermitLimiter(config);
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig("permitLimiter", REQUEST_LIMIT_PER_SECONDS, redissonService.getRLock("permitLock"), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
 
         CACHE_SIZE = (int) (REQUEST_LIMIT_PER_SECONDS * CACHE);
         TIMEOUT = (long) (CACHE_SIZE * (1000L / REQUEST_LIMIT_PER_SECONDS));
 //        TIMEOUT = (long) ((CACHE_SIZE + REQUEST_LIMIT_PER_SECONDS) * (1000L / REQUEST_LIMIT_PER_SECONDS));
 
-        statistic(permitLimiter);
+        statistic(rateLimiter);
 
         ExecutorService executor = Executors.newFixedThreadPool(50);
 
@@ -75,7 +75,7 @@ public class PermitLimiterFactoryTest {
         for (int i = 0; i < JOB_NUMS; ++i) {
             int finalI = i;
             executor.execute(() -> {
-                String rsp = acquireJob(finalI, permitLimiter);
+                String rsp = acquireJob(finalI, rateLimiter);
             });
         }
 
@@ -88,8 +88,8 @@ public class PermitLimiterFactoryTest {
     /**
      * 通过rateLimiter控制接口调用
      */
-    private String acquireJob(int jobNo, PermitLimiter permitLimiter) {
-        if (!permitLimiter.tryAcquire(TIMEOUT)) {
+    private String acquireJob(int jobNo, RateLimiter rateLimiter) {
+        if (!rateLimiter.tryAcquire(TIMEOUT)) {
             failJob++;
             System.out.println("req: " + jobNo + ", rsp is: " + null);
         } else {
@@ -127,9 +127,9 @@ public class PermitLimiterFactoryTest {
         System.out.println("\ntotal " + jobNums + " jobs, success " + successJob + " jobs, fail " + failJob + " jobs.");
     }
 
-    private static void statistic(PermitLimiter permitLimiter) {
+    private static void statistic(RateLimiter rateLimiter) {
         System.out.println("---------- statistic ----------");
-        System.out.println("Request limit per seconds: " + permitLimiter.getRate());
+        System.out.println("Request limit per seconds: " + rateLimiter.getRate());
         System.out.println("Cache size: " + CACHE_SIZE);
         System.out.println("Timeout: " + TIMEOUT + " ms");
         System.out.println("Sleep Time: " + SLEEP_TIME + " ms");
@@ -138,18 +138,18 @@ public class PermitLimiterFactoryTest {
 
     @Test
     public void permitLimiterTryAcquireTest() {
-        PermitLimiterFactory factory = new PermitLimiterFactory();
-        PermitLimiterConfig config = new PermitLimiterConfig("testPermitLimiter2", 1, redissonService.getRLock("testPermitLock2"), redisService);
-        PermitLimiter permitLimiter = factory.getPermitLimiter(config);
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter2", 1, redissonService.getRLock("testPermitLock2"), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
 
         for (int i = 1; i <= 8; i++) {
-            if (permitLimiter.tryAcquire(0L)) {
-                System.out.println(i + ": success, left permit: " + permitLimiter.getBucket().getStoredPermits());
+            if (rateLimiter.tryAcquire(0L)) {
+                System.out.println(i + ": success, left permit: " + rateLimiter.getBucket().getStoredPermits());
             } else {
-                System.out.println(i + ": fail, left permit: " + permitLimiter.getBucket().getStoredPermits());
+                System.out.println(i + ": fail, left permit: " + rateLimiter.getBucket().getStoredPermits());
                 try {
                     Thread.sleep(500L);
-                    System.out.println("after sleep, permit: " + permitLimiter.getBucket().getStoredPermits());
+                    System.out.println("after sleep, permit: " + rateLimiter.getBucket().getStoredPermits());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -160,12 +160,12 @@ public class PermitLimiterFactoryTest {
 
     @Test
     public void newAcquireTest() {
-        PermitLimiterFactory factory = new PermitLimiterFactory();
-        PermitLimiterConfig config = new PermitLimiterConfig("testPermitLimiter3", 2, redissonService.getRLock("testPermitLock3"), redisService);
-        PermitLimiter permitLimiter = factory.getPermitLimiter(config);
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter3", 2, redissonService.getRLock("testPermitLock3"), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
 
         for (int i = 1; i <= 5; i++) {
-            System.out.println("acquire time: " + permitLimiter.acquire() + "\n");
+            System.out.println("acquire time: " + rateLimiter.acquire() + "\n");
         }
     }
 
@@ -176,7 +176,7 @@ public class PermitLimiterFactoryTest {
 
         long start = System.currentTimeMillis();
         System.out.println("\nstart: " + start);
-        PermitLimiter.sleepMicrosUninterruptibly(remainingMicros);
+        RateLimiter.sleepMicrosUninterruptibly(remainingMicros);
         long end = System.currentTimeMillis();
         System.out.println("end: " + end);
         System.out.println("duration: " + (end - start));

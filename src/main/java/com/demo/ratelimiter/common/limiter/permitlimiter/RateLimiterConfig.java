@@ -11,7 +11,7 @@ import org.redisson.api.RLock;
  */
 @Getter
 @ToString
-public class PermitLimiterConfig {
+public class RateLimiterConfig {
     private final RedisService redisService;
 
     /**
@@ -34,11 +34,11 @@ public class PermitLimiterConfig {
      */
     private final RLock lock;
 
-    public PermitLimiterConfig(String name, RLock lock, RedisService redisService) {
+    public RateLimiterConfig(String name, RLock lock, RedisService redisService) {
         this(name, Constants.PERMITS_PER_SECOND, Constants.MAX_PERMITS, lock, redisService);
     }
 
-    public PermitLimiterConfig(String name, long permitsPerSecond, long maxPermits, RLock lock, RedisService redisService) {
+    public RateLimiterConfig(String name, long permitsPerSecond, long maxPermits, RLock lock, RedisService redisService) {
         this.name = name;
         this.permitsPerSecond = permitsPerSecond;
         this.maxPermits = maxPermits;
@@ -46,7 +46,7 @@ public class PermitLimiterConfig {
         this.redisService = redisService;
     }
 
-    public PermitLimiterConfig(String name, long permitsPerSecond, RLock lock, RedisService redisService) {
+    public RateLimiterConfig(String name, long permitsPerSecond, RLock lock, RedisService redisService) {
         this.name = name;
         this.permitsPerSecond = permitsPerSecond;
         this.maxPermits = permitsPerSecond;
