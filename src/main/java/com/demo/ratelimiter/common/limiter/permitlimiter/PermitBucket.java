@@ -35,7 +35,7 @@ public class PermitBucket {
     /**
      * 下一个获取令牌请求被批准的时间
      */
-    private long nextFreeTicketMicros = 0L;
+    private long nextFreeTicketMicros;
 
     public PermitBucket(String name, long maxPermits, int storedPermits, long intervalMicros, long nextFreeTicketMicros) {
         this.name = name;
@@ -63,14 +63,5 @@ public class PermitBucket {
                 nextFreeTicketMicros = nowMicros;
             }
         }
-    }
-
-    /**
-     * 消耗指定令牌数
-     *
-     * @param storedPermitsToSpend
-     */
-    public void decrPermits(long storedPermitsToSpend) {
-        this.storedPermits -= storedPermitsToSpend;
     }
 }

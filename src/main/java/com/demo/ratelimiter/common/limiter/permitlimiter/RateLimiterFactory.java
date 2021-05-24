@@ -8,17 +8,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RateLimiterFactory implements Factory {
-    private static final Map<String, RateLimiter> PERMITLIMITERS = new ConcurrentHashMap<>();
-    private static final Map<RateLimiter, String> PERMITLIMITER_NAME = new ConcurrentHashMap<>();
+    private static final Map<String, RateLimiter> RATELIMITERS = new ConcurrentHashMap<>();
+    private static final Map<RateLimiter, String> RATELIMITERS_NAME = new ConcurrentHashMap<>();
 
     public RateLimiter getPermitLimiter(RateLimiterConfig config) {
-        RateLimiter rateLimiter = PERMITLIMITERS.get(config.getName());
+        RateLimiter rateLimiter = RATELIMITERS.get(config.getName());
         if (rateLimiter == null) {
             rateLimiter = new RateLimiter(config);
             String name = config.getName();
-            PERMITLIMITERS.putIfAbsent(name, rateLimiter);
-            PERMITLIMITER_NAME.putIfAbsent(rateLimiter, name);
-            rateLimiter = PERMITLIMITERS.get(name);
+            RATELIMITERS.putIfAbsent(name, rateLimiter);
+            RATELIMITERS_NAME.putIfAbsent(rateLimiter, name);
+            rateLimiter = RATELIMITERS.get(name);
             rateLimiter.putDefaultBucket();
         }
         return rateLimiter;
@@ -27,8 +27,8 @@ public class RateLimiterFactory implements Factory {
     @Override
     public void destroy(Object obj) {
         if (obj instanceof RateLimiter) {
-            String name = PERMITLIMITER_NAME.remove(obj);
-            PERMITLIMITERS.remove(name);
+            String name = RATELIMITERS_NAME.remove(obj);
+            RATELIMITERS.remove(name);
         }
     }
 }
