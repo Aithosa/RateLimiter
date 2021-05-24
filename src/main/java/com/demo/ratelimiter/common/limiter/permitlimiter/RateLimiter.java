@@ -92,7 +92,8 @@ public class RateLimiter implements Limiter {
     }
 
     /**
-     * 获取令牌桶, 并刷新令牌桶状态
+     * 获取令牌桶
+     * TODO 刷新令牌桶状态 - 考虑需不需要
      *
      * @return 缓存中的令牌桶或者默认的令牌桶
      */
@@ -103,9 +104,9 @@ public class RateLimiter implements Limiter {
         if (permitBucket == null) {
             return putDefaultBucket();
         }
-//        permitBucket.reSync(stopwatch.readNanos());
-//        return redisService.get(PermitBucketKey.permitBucket, this.name, PermitBucket.class);
-        return permitBucket;
+        permitBucket.reSync(MILLISECONDS.toMicros(System.currentTimeMillis()));
+        return redisService.get(PermitBucketKey.permitBucket, this.name, PermitBucket.class);
+        // return permitBucket;
     }
 
     /**
