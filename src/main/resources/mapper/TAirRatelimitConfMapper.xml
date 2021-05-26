@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.demo.ratelimiter.model.TAirRatelimitConfMapper">
+    <resultMap id="BaseResultMap" type="com.demo.ratelimiter.model.TAirRatelimitConf">
+        <result column="channelType" jdbcType="VARCHAR" property="channelType" />
+        <result column="interfaceNo" jdbcType="VARCHAR" property="interfaceNo" />
+        <result column="interfaceUrl" jdbcType="VARCHAR" property="interfaceUrl" />
+        <result column="rateLimit" jdbcType="INTEGER" property="rateLimit" />
+        <result column="cache" jdbcType="REAL" property="cache" />
+        <result column="status" jdbcType="BOOLEAN" property="status" />
+    </resultMap>
+    <sql id="Base_Column_List">
+        channelType, interfaceNo, interfaceUrl, rateLimit, cache, status
+    </sql>
+    <select id="getAirRatelimitConf" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_air_ratelimite_conf
+    </select>
+</mapper>
