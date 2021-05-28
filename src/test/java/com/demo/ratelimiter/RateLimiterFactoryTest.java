@@ -1,10 +1,10 @@
 package com.demo.ratelimiter;
 
-import com.demo.ratelimiter.common.limiter.permitlimiter.RateLimiter;
-import com.demo.ratelimiter.common.limiter.permitlimiter.RateLimiterConfig;
-import com.demo.ratelimiter.common.limiter.permitlimiter.RateLimiterFactory;
-import com.demo.ratelimiter.redis.service.RedisService;
-import com.demo.ratelimiter.redis.service.RedissonService;
+import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiter;
+import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiterConfig;
+import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiterFactory;
+import com.demo.ratelimiter.common.redis.service.RedisService;
+import com.demo.ratelimiter.common.redis.service.RedissonService;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

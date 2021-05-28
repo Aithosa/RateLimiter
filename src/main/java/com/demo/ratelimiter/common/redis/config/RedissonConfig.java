@@ -1,4 +1,4 @@
-package com.demo.ratelimiter.redis.config;
+package com.demo.ratelimiter.common.redis.config;
 
 import lombok.Getter;
 import lombok.Setter;

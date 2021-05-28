@@ -1,4 +1,4 @@
-package com.demo.ratelimiter;
+package com.demo.ratelimiter.guava;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.springframework.util.NumberUtils;
@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author w00585603
  */
-public class QpsLimiter {
+public class GuavaLimiter {
     private static double CACHE = 0;
 
     /**
@@ -44,7 +44,7 @@ public class QpsLimiter {
      * 2. 在limit函数内通过参数控制
      * 具体实现待测试
      */
-    public QpsLimiter(String limit, long sleepTime, double cache) {
+    public GuavaLimiter(String limit, long sleepTime, double cache) {
         int requestLimit = NumberUtils.parseNumber("5", int.class);
 //        CACHE = (int) (requestLimit * cache);
         CACHE_SIZE = (int) (requestLimit * cache);

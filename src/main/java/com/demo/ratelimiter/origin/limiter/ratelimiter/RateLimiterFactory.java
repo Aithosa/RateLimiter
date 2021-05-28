@@ -1,4 +1,4 @@
-package com.demo.ratelimiter.common.limiter.permitlimiter;
+package com.demo.ratelimiter.origin.limiter.ratelimiter;
 
 import com.demo.ratelimiter.common.Factory;
 import org.springframework.stereotype.Service;

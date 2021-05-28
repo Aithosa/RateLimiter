@@ -15,6 +15,6 @@
     <select id="getAirRatelimitConf" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List" />
-        from t_air_ratelimite_conf
+        from t_ratelimite_conf
     </select>
 </mapper>

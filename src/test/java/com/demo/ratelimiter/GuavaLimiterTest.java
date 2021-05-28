@@ -1,11 +1,12 @@
 package com.demo.ratelimiter;
 
+import com.demo.ratelimiter.guava.GuavaLimiter;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class QpsTest {
+public class GuavaLimiterTest {
     private static final int JOB_NUMS = 20;
 
     /**
@@ -20,7 +21,7 @@ public class QpsTest {
 
     private static final long SLEEP_TIME = 1000L;
 
-    private final QpsLimiter qpsLimiter = new QpsLimiter(REQUEST_LIMIT_PER_SECONDS, SLEEP_TIME, CACHE);
+    private final GuavaLimiter qpsLimiter = new GuavaLimiter(REQUEST_LIMIT_PER_SECONDS, SLEEP_TIME, CACHE);
 
     /**
      * 测试qps, 缓冲队列长度

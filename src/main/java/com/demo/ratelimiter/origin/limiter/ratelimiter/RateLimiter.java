@@ -1,8 +1,8 @@
-package com.demo.ratelimiter.common.limiter.permitlimiter;
+package com.demo.ratelimiter.origin.limiter.ratelimiter;
 
-import com.demo.ratelimiter.common.limiter.Limiter;
-import com.demo.ratelimiter.redis.key.common.PermitBucketKey;
-import com.demo.ratelimiter.redis.service.RedisService;
+import com.demo.ratelimiter.origin.limiter.Limiter;
+import com.demo.ratelimiter.common.redis.key.common.PermitBucketKey;
+import com.demo.ratelimiter.common.redis.service.RedisService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;

@@ -1,6 +1,6 @@
-package com.demo.ratelimiter.redis.config.factory;
+package com.demo.ratelimiter.common.redis.config.factory;
 
-import com.demo.ratelimiter.redis.config.RedissonConfig;
+import com.demo.ratelimiter.common.redis.config.RedissonConfig;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;

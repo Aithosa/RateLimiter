@@ -1,4 +1,4 @@
-package com.demo.ratelimiter.redis.key;
+package com.demo.ratelimiter.common.redis.key;
 
 public interface KeyPrefix {
     int expireSeconds();

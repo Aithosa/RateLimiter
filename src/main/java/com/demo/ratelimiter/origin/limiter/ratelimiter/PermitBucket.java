@@ -1,4 +1,4 @@
-package com.demo.ratelimiter.common.limiter.permitlimiter;
+package com.demo.ratelimiter.origin.limiter.ratelimiter;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

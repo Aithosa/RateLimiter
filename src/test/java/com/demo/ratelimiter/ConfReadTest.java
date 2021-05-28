@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
-public class myBatisTest extends RateLimiterFactoryTest{
+public class ConfReadTest extends RateLimiterFactoryTest{
     @Autowired
     private TAirRatelimitConfMapper TAirRatelimitConfMapper;
 

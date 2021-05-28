@@ -1,6 +1,7 @@
-package com.demo.ratelimiter.redis.service;
+package com.demo.ratelimiter.common.redis.service;
 
 import org.redisson.api.RLock;
+import org.redisson.api.RRateLimiter;
 import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,5 +30,15 @@ public class RedissonService {
      */
     public RReadWriteLock getRWLock(String key) {
         return redissonClient.getReadWriteLock(key);
+    }
+
+    /**
+     * 获取限流器
+     *
+     * @param key
+     * @return
+     */
+    public RRateLimiter getRateLimiter(String key) {
+        return redissonClient.getRateLimiter(key);
     }
 }

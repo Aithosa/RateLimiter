@@ -1,6 +1,6 @@
-package com.demo.ratelimiter.redis.config.factory;
+package com.demo.ratelimiter.common.redis.config.factory;
 
-import com.demo.ratelimiter.redis.config.RedisConfig;
+import com.demo.ratelimiter.common.redis.config.RedisConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
@@ -19,6 +19,7 @@ public class RedisPoolFactory {
         poolConfig.setMaxTotal(redisConfig.getPoolMaxTotal());
         poolConfig.setMaxWaitMillis(redisConfig.getPoolMaxWait() * 1000L);
 
+        //
         return new JedisPool(poolConfig, redisConfig.getHost(), redisConfig.getPort(),
                 redisConfig.getTimeout() * 1000);
     }

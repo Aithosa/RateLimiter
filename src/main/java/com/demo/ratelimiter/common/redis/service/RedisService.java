@@ -1,9 +1,9 @@
-package com.demo.ratelimiter.redis.service;
+package com.demo.ratelimiter.common.redis.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
-import com.demo.ratelimiter.redis.key.KeyPrefix;
+import com.demo.ratelimiter.common.redis.key.KeyPrefix;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;

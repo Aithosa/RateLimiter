@@ -1,7 +1,7 @@
-package com.demo.ratelimiter.common.limiter.permitlimiter;
+package com.demo.ratelimiter.origin.limiter.ratelimiter;
 
 import com.demo.ratelimiter.common.Constants;
-import com.demo.ratelimiter.redis.service.RedisService;
+import com.demo.ratelimiter.common.redis.service.RedisService;
 import lombok.Getter;
 import lombok.ToString;
 import org.redisson.api.RLock;
