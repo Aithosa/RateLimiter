@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 public class RedissonLimiterTest extends RateLimiterFactoryTest {
     @Autowired
-    private RedissonService RedissonService;
+    private RedissonService redissonService;
 
     /**
      * 测试acquire方法，预期和guava相同
@@ -19,7 +19,7 @@ public class RedissonLimiterTest extends RateLimiterFactoryTest {
     @Test
     public void redissonLimiterAcquireTest() {
         // 1、 声明一个限流器
-        RRateLimiter rateLimiter = RedissonService.getRateLimiter("testRedissonLimiterAcquire");
+        RRateLimiter rateLimiter = redissonService.getRateLimiter("testRedissonLimiterAcquire");
         // 2、 设置速率，1秒中产生2个令牌
         rateLimiter.trySetRate(RateType.OVERALL, 1, 500L, RateIntervalUnit.MILLISECONDS);
 
@@ -36,7 +36,7 @@ public class RedissonLimiterTest extends RateLimiterFactoryTest {
     @Test
     public void redissonLimiterTryAcquireTest() {
         // 1、 声明一个限流器
-        RRateLimiter rateLimiter = RedissonService.getRateLimiter("testRedissonLimiterTryAcquire");
+        RRateLimiter rateLimiter = redissonService.getRateLimiter("testRedissonLimiterTryAcquire");
         // 2、 设置速率，1秒中产生2个令牌
         rateLimiter.trySetRate(RateType.OVERALL, 1, 200L, RateIntervalUnit.MILLISECONDS);
 
