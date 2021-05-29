@@ -144,12 +144,12 @@ public class RateLimiterFactoryTest {
 
         for (int i = 1; i <= 10; i++) {
             if (rateLimiter.tryAcquire(0L)) {
-                System.out.println(i + ": success, left permit: " + rateLimiter.getBucket().getStoredPermits());
+                System.out.println(i + ": success, left permit: " + rateLimiter.getBucketAndSync().getStoredPermits());
             } else {
-                System.out.println(i + ": fail, left permit: " + rateLimiter.getBucket().getStoredPermits());
+                System.out.println(i + ": fail, left permit: " + rateLimiter.getBucketAndSync().getStoredPermits());
                 try {
                     Thread.sleep(500L);
-                    System.out.println("after sleep, permit: " + rateLimiter.getBucket().getStoredPermits());
+                    System.out.println("after sleep, permit: " + rateLimiter.getBucketAndSync().getStoredPermits());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
