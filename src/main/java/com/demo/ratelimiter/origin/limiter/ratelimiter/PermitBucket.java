@@ -1,7 +1,11 @@
 package com.demo.ratelimiter.origin.limiter.ratelimiter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.IOException;
 
 import static java.lang.Math.min;
 
@@ -11,6 +15,7 @@ import static java.lang.Math.min;
  */
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class PermitBucket {
     /**
      * 唯一标识
@@ -37,14 +42,6 @@ public class PermitBucket {
      */
     private long nextFreeTicketMicros;
 
-    public PermitBucket(String name, long maxPermits, int storedPermits, long intervalMicros, long nextFreeTicketMicros) {
-        this.name = name;
-        this.maxPermits = maxPermits;
-        this.storedPermits = storedPermits;
-        this.intervalMicros = intervalMicros;
-        this.nextFreeTicketMicros = nextFreeTicketMicros;
-    }
-
     /**
      * 更新当前持有的令牌数, 同步令牌桶的状态
      * 根据当前时间和上一次时间戳的间隔，更新令牌桶中当前令牌数。
@@ -63,5 +60,20 @@ public class PermitBucket {
                 nextFreeTicketMicros = nowMicros;
             }
         }
+    }
+
+    /**
+     * 没有的话RedisService的方法执行有可能会报错，或者换成Jackson
+     *
+     * @param json
+     * @throws IOException
+     */
+    public PermitBucket(String json) throws IOException {
+        PermitBucket param = new ObjectMapper().readValue(json, PermitBucket.class);
+        this.name = param.getName();
+        this.maxPermits = param.getMaxPermits();
+        this.storedPermits = param.getStoredPermits();
+        this.intervalMicros = param.getIntervalMicros();
+        this.nextFreeTicketMicros = param.getNextFreeTicketMicros();
     }
 }
