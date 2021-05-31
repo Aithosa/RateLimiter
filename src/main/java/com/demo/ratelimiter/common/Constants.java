@@ -1,5 +1,10 @@
 package com.demo.ratelimiter.common;
 
+/**
+ * 常量
+ *
+ * @author w00585603
+ */
 public class Constants {
     /**
      * PermitLimiter

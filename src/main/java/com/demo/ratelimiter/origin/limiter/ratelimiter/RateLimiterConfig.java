@@ -12,8 +12,6 @@ import org.redisson.api.RLock;
 @Getter
 @ToString
 public class RateLimiterConfig {
-    private final RedisService redisService;
-
     /**
      * 唯一标识
      */
@@ -30,26 +28,37 @@ public class RateLimiterConfig {
     private final long maxPermits;
 
     /**
+     * 缓存比例
+     */
+    private final float cache;
+
+    /**
      * 分布式互斥锁
      */
     private final RLock lock;
 
-    public RateLimiterConfig(String name, RLock lock, RedisService redisService) {
-        this(name, Constants.PERMITS_PER_SECOND, Constants.MAX_PERMITS, lock, redisService);
-    }
+    /**
+     * 用于对Redis进行读取和查找操作
+     */
+    private final RedisService redisService;
 
-    public RateLimiterConfig(String name, long permitsPerSecond, long maxPermits, RLock lock, RedisService redisService) {
-        this.name = name;
-        this.permitsPerSecond = permitsPerSecond;
-        this.maxPermits = maxPermits;
-        this.lock = lock;
-        this.redisService = redisService;
+    public RateLimiterConfig(String name, RLock lock, RedisService redisService) {
+        this(name, Constants.PERMITS_PER_SECOND, Constants.MAX_PERMITS, 0F, lock, redisService);
     }
 
     public RateLimiterConfig(String name, long permitsPerSecond, RLock lock, RedisService redisService) {
+        this(name, permitsPerSecond, permitsPerSecond, 0F, lock, redisService);
+    }
+
+    public RateLimiterConfig(String name, long permitsPerSecond, float cache, RLock lock, RedisService redisService) {
+        this(name, permitsPerSecond, permitsPerSecond, cache, lock, redisService);
+    }
+
+    public RateLimiterConfig(String name, long permitsPerSecond, long maxPermits, float cache, RLock lock, RedisService redisService) {
         this.name = name;
         this.permitsPerSecond = permitsPerSecond;
-        this.maxPermits = permitsPerSecond;
+        this.maxPermits = maxPermits;
+        this.cache = cache;
         this.lock = lock;
         this.redisService = redisService;
     }

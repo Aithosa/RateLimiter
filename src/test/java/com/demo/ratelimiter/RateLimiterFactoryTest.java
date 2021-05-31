@@ -1,11 +1,11 @@
 package com.demo.ratelimiter;
 
+import com.demo.ratelimiter.common.Constant;
+import com.demo.ratelimiter.common.redis.service.RedisService;
+import com.demo.ratelimiter.common.redis.service.RedissonService;
 import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiter;
 import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiterConfig;
 import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiterFactory;
-import com.demo.ratelimiter.common.redis.service.RedisService;
-import com.demo.ratelimiter.common.redis.service.RedissonService;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +21,14 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = RateLimiterApplication.class)
 public class RateLimiterFactoryTest {
+    /**
+     * 限流器开关
+     */
+    private static final String rateLimitSwitch = Constant.ON.getCode();
+
+    /**
+     * 任务总数量
+     */
     private static final int JOB_NUMS = 20;
 
     /**
@@ -29,10 +37,13 @@ public class RateLimiterFactoryTest {
     private static final long REQUEST_LIMIT_PER_SECONDS = 5L;
 
     /**
-     * 缓冲区长度
+     * 缓冲区长度(相对于桶大小的比例)
      */
     private static final double CACHE = 0.5;
 
+    /**
+     * 缓冲任务数量
+     */
     private static double CACHE_SIZE = 0L;
 
     /**
@@ -40,10 +51,13 @@ public class RateLimiterFactoryTest {
      */
     private static Long TIMEOUT = 0L;
 
+    /**
+     * 休眠时间，用于等待令牌恢复
+     */
     private static final long SLEEP_TIME = 0L;
 
     /**
-     * 统计参数
+     * 统计用参数
      */
     private static long START_TIME = System.currentTimeMillis();
 
@@ -70,7 +84,6 @@ public class RateLimiterFactoryTest {
         statistic(rateLimiter);
 
         ExecutorService executor = Executors.newFixedThreadPool(50);
-
         START_TIME = System.currentTimeMillis();
         for (int i = 0; i < JOB_NUMS; ++i) {
             int finalI = i;
@@ -89,7 +102,7 @@ public class RateLimiterFactoryTest {
      * 通过rateLimiter控制接口调用
      */
     private String acquireJob(int jobNo, RateLimiter rateLimiter) {
-        if (!rateLimiter.tryAcquire(TIMEOUT)) {
+        if (!rateLimiter.tryAcquire(rateLimitSwitch)) {
             failJob++;
             System.out.println("req: " + jobNo + ", rsp is: " + null);
         } else {
@@ -159,6 +172,25 @@ public class RateLimiterFactoryTest {
     }
 
     @Test
+    public void tryAcquireThreadTest() throws Exception {
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter4", 5, redissonService.getRLock("testPermitLock2"), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
+
+        ExecutorService executor = Executors.newFixedThreadPool(12);
+        START_TIME = System.currentTimeMillis();
+        for (int i = 0; i < 10; ++i) {
+            int finalI = i;
+            executor.execute(() -> {
+                System.out.println("job " + finalI + ": " + rateLimiter.tryAcquire(400L) + " cost: " + (System.currentTimeMillis() - START_TIME));
+            });
+        }
+
+        Thread.sleep(2000L);
+        executor.shutdown();
+    }
+
+    @Test
     public void acquireTest() {
         RateLimiterFactory factory = new RateLimiterFactory();
         RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter3", 2, redissonService.getRLock("testPermitLock3"), redisService);
@@ -169,6 +201,9 @@ public class RateLimiterFactoryTest {
         }
     }
 
+    /**
+     * 测试时间相关
+     */
     @Test
     public void timeTest() {
         long remainingMicros = MILLISECONDS.toMicros(500L);
@@ -182,5 +217,4 @@ public class RateLimiterFactoryTest {
         System.out.println("duration: " + (end - start));
         System.out.println(saturatedAdd(start, 500L) - start);
     }
-
 }

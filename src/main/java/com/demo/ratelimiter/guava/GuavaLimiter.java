@@ -45,7 +45,7 @@ public class GuavaLimiter {
      * 具体实现待测试
      */
     public GuavaLimiter(String limit, long sleepTime, double cache) {
-        int requestLimit = NumberUtils.parseNumber("5", int.class);
+        int requestLimit = 5;
 //        CACHE = (int) (requestLimit * cache);
         CACHE_SIZE = (int) (requestLimit * cache);
         TIMEOUT = (long) (CACHE_SIZE * (1000L / requestLimit));

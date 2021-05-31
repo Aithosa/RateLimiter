@@ -5,6 +5,7 @@ spring:
 redis:
   host: 127.0.0.1
   port: 6379
+  database: 0
   timeout: 1000
   poolMaxTotal: 1000
   poolMaxIdle: 500

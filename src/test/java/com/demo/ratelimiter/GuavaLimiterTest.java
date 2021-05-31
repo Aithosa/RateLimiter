@@ -1,12 +1,13 @@
 package com.demo.ratelimiter;
 
 import com.demo.ratelimiter.guava.GuavaLimiter;
+import com.google.common.util.concurrent.RateLimiter;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class GuavaLimiterTest {
+public class GuavaLimiterTest extends RateLimiterFactoryTest {
     private static final int JOB_NUMS = 20;
 
     /**
@@ -40,6 +41,20 @@ public class GuavaLimiterTest {
         Thread.sleep(2500L);
         qpsLimiter.jobCountStatistic(JOB_NUMS);
 
+        executor.shutdown();
+    }
+
+    @Test
+    public void guavaAcquireTest() throws Exception {
+        RateLimiter rateLimiter = RateLimiter.create(3);
+        ExecutorService executor = Executors.newFixedThreadPool(7);
+
+        for (int i = 0; i < 6; ++i) {
+            int finalI = i;
+            executor.execute(() -> System.out.println("job " + finalI + ": " + rateLimiter.acquire()));
+        }
+
+        Thread.sleep(2500L);
         executor.shutdown();
     }
 }

@@ -45,7 +45,7 @@ public class PermitBucket {
     /**
      * 更新当前持有的令牌数, 同步令牌桶的状态
      * 根据当前时间和上一次时间戳的间隔，更新令牌桶中当前令牌数。
-     * 若当前时间晚于 lastUpdateTime，则计算该段时间内可以生成多少令牌，将生成的令牌加入令牌桶中并更新数据
+     * 若当前时间晚于 nextFreeTicketMicros，则计算该段时间内可以生成多少令牌，将生成的令牌加入令牌桶中并更新数据
      *
      * @param nowMicros 当前时间
      */
@@ -64,9 +64,6 @@ public class PermitBucket {
 
     /**
      * 没有的话RedisService的方法执行有可能会报错，或者换成Jackson
-     *
-     * @param json
-     * @throws IOException
      */
     public PermitBucket(String json) throws IOException {
         PermitBucket param = new ObjectMapper().readValue(json, PermitBucket.class);

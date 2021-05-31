@@ -14,11 +14,12 @@ public class RedissonFactory {
     RedissonConfig redissonConfig;
 
     @Bean
-    public RedissonClient getRedisson(){
+    public RedissonClient getRedisson() {
         Config config = new Config();
         String host = redissonConfig.getHost();
         String port = redissonConfig.getPort();
-        config.useSingleServer().setAddress("redis://" + host + ":" + port);
+        int database = redissonConfig.getDatabase();
+        config.useSingleServer().setAddress("redis://" + host + ":" + port).setDatabase(database);
         //添加主从配置
         // config.useMasterSlaveServers().setMasterAddress("").setPassword("").addSlaveAddress(new String[]{"",""});
         return Redisson.create(config);

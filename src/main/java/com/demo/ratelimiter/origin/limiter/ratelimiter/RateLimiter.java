@@ -1,9 +1,10 @@
 package com.demo.ratelimiter.origin.limiter.ratelimiter;
 
-import com.demo.ratelimiter.origin.limiter.Limiter;
+import com.demo.ratelimiter.common.Constant;
 import com.demo.ratelimiter.common.redis.key.common.PermitBucketKey;
 import com.demo.ratelimiter.common.redis.service.RedisService;
-import lombok.Data;
+import com.demo.ratelimiter.origin.limiter.Limiter;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 
@@ -17,10 +18,8 @@ import static java.util.concurrent.TimeUnit.*;
  * 令牌桶限流器，以令牌桶为基础
  */
 @Slf4j
-@Data
+@Getter
 public class RateLimiter implements Limiter {
-    private final RedisService redisService;
-
     /**
      * 唯一标识
      */
@@ -37,9 +36,19 @@ public class RateLimiter implements Limiter {
     private final long maxPermits;
 
     /**
+     * 超时时间 - 由缓存队列比例计算
+     */
+    private final long timeout;
+
+    /**
      * 分布式互斥锁
      */
     private final RLock lock;
+
+    /**
+     * 用于对Redis进行读取和查找操作
+     */
+    private final RedisService redisService;
 
     /**
      * 构造函数, 读取配置数据
@@ -48,8 +57,13 @@ public class RateLimiter implements Limiter {
         this.name = config.getName();
         this.permitsPerSecond = (config.getPermitsPerSecond() == 0L) ? 1000L : config.getPermitsPerSecond();
         this.maxPermits = config.getMaxPermits();
+        this.timeout = (long) (config.getCache() * config.getPermitsPerSecond() * TimeUnit.SECONDS.toMicros(1) / permitsPerSecond);
         this.lock = config.getLock();
         this.redisService = config.getRedisService();
+    }
+
+    public double getRate() {
+        return permitsPerSecond;
     }
 
     /**
@@ -131,10 +145,6 @@ public class RateLimiter implements Limiter {
         redisService.setwe(PermitBucketKey.permitBucket, this.name, permitBucket, PermitBucketKey.permitBucket.expireSeconds());
     }
 
-    public double getRate() {
-        return permitsPerSecond;
-    }
-
     private long reserve(int permits) {
         checkPermits(permits);
         while (true) {
@@ -173,6 +183,14 @@ public class RateLimiter implements Limiter {
         return returnValue;
     }
 
+    private boolean canAcquire(long permits, long nowMicros, long timeoutMicros) {
+        return queryEarliestAvailable(permits, nowMicros) - timeoutMicros <= nowMicros;
+    }
+
+    private long queryEarliestAvailable(long permits, long nowMicros) {
+        return estimateEarliestAvailable(permits, nowMicros);
+    }
+
     private long estimateEarliestAvailable(long requiredPermits, long nowMicros) {
         PermitBucket bucket = getBucket();
         bucket.reSync(nowMicros);
@@ -208,6 +226,23 @@ public class RateLimiter implements Limiter {
         return 1.0 * microsToWait / SECONDS.toMicros(1L);
     }
 
+    /**
+     * 以毫秒为单位, 使用预设值的timeout, 考虑开关状态
+     */
+    public boolean tryAcquire(String switchConf) {
+        if (Constant.OFF.getCode().equals(switchConf)) {
+            return true;
+        }
+        return tryAcquire(1, timeout, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * 以毫秒为单位, 使用预设值的timeout
+     */
+    public boolean tryAcquire() {
+        return tryAcquire(1, timeout, TimeUnit.MILLISECONDS);
+    }
+
     public boolean tryAcquire(long timeout, TimeUnit unit) {
         return tryAcquire(1, timeout, unit);
     }
@@ -241,9 +276,9 @@ public class RateLimiter implements Limiter {
                 } finally {
                     unlock();
                 }
-                sleepMicrosUninterruptibly(waitMicros);
-                return true;
             }
+            sleepMicrosUninterruptibly(waitMicros);
+            return true;
         }
     }
 
@@ -259,10 +294,11 @@ public class RateLimiter implements Limiter {
             if (lock()) {
                 try {
                     PermitBucket bucket = getBucket();
-                    long now = System.nanoTime();
-                    bucket.reSync(now);
+                    bucket.reSync(MILLISECONDS.toMicros(System.currentTimeMillis()));
                     long newPermits = calculateAddPermits(bucket, permits);
+                    long newNextFreeTicketMicros = calculateNextFreeTicketMicros(bucket, newPermits);
                     bucket.setStoredPermits(newPermits);
+                    bucket.setNextFreeTicketMicros(newNextFreeTicketMicros);
                     setBucket(bucket);
                     return;
                 } finally {
@@ -277,7 +313,7 @@ public class RateLimiter implements Limiter {
      *
      * @param bucket     桶
      * @param addPermits 添加的令牌数
-     * @return
+     * @return 实际添加的令牌数
      */
     private long calculateAddPermits(PermitBucket bucket, long addPermits) {
         long newPermits = bucket.getStoredPermits() + addPermits;
@@ -289,33 +325,42 @@ public class RateLimiter implements Limiter {
     }
 
     /**
-     * 当前是否可以获取到令牌，如果获取不到，至少需要等多久
+     * 计算新的NextFreeTicketMicros
      *
-     * @param permits 请求的令牌数
-     * @return 等待时间，单位是纳秒。为 0 表示可以马上获取
+     * @param bucket     桶
+     * @param addPermits 实际添加的令牌数
+     * @return 新的NextFreeTicketMicros
      */
-    private long canAcquire(long permits) {
-        // 读取redis中的令牌数据, 同步令牌状态, 写回redis
-        PermitBucket bucket = getBucket();
-        long now = System.nanoTime();
-        bucket.reSync(now);
-        setBucket(bucket);
+    private long calculateNextFreeTicketMicros(PermitBucket bucket, long addPermits) {
+        long addTimeMicros = bucket.getIntervalMicros() * addPermits;
+        long nowMicros = MILLISECONDS.toMicros(System.currentTimeMillis());
+        long newNextFreeTicketMicros = nowMicros + addTimeMicros;
 
-        if (permits <= bucket.getStoredPermits()) {
-            return 0L;
-        } else {
-            return (permits - bucket.getStoredPermits()) * bucket.getIntervalMicros();
+        if (newNextFreeTicketMicros > bucket.getNextFreeTicketMicros()) {
+            return nowMicros;
         }
+        return newNextFreeTicketMicros;
     }
 
-    private boolean canAcquire(long permits, long nowMicros, long timeoutMicros) {
-//        System.out.println("下一个请求可以处理的时间: " + queryEarliestAvailable(permits, nowMicros));
-        return queryEarliestAvailable(permits, nowMicros) - timeoutMicros <= nowMicros;
-    }
-
-    private long queryEarliestAvailable(long permits, long nowMicros) {
-        return estimateEarliestAvailable(permits, nowMicros);
-    }
+//    /**
+//     * 当前是否可以获取到令牌，如果获取不到，至少需要等多久
+//     *
+//     * @param permits 请求的令牌数
+//     * @return 等待时间，单位是纳秒。为 0 表示可以马上获取
+//     */
+//    private long canAcquire(long permits) {
+//        // 读取redis中的令牌数据, 同步令牌状态, 写回redis
+//        PermitBucket bucket = getBucket();
+//        long now = System.nanoTime();
+//        bucket.reSync(now);
+//        setBucket(bucket);
+//
+//        if (permits <= bucket.getStoredPermits()) {
+//            return 0L;
+//        } else {
+//            return (permits - bucket.getStoredPermits()) * bucket.getIntervalMicros();
+//        }
+//    }
 
     private boolean acquireInTime(long startNanos, long waitNanos, long timeoutNanos) {
 //        return waitNanos - timeoutNanos <= startNanos;
