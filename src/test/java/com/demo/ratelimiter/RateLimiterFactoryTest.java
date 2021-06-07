@@ -3,6 +3,7 @@ package com.demo.ratelimiter;
 import com.demo.ratelimiter.common.Constant;
 import com.demo.ratelimiter.common.redis.service.RedisService;
 import com.demo.ratelimiter.common.redis.service.RedissonService;
+import com.demo.ratelimiter.origin.limiter.Limiter;
 import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiter;
 import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiterConfig;
 import com.demo.ratelimiter.origin.limiter.ratelimiter.RateLimiterFactory;
@@ -14,6 +15,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.math.LongMath.saturatedAdd;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -191,14 +193,100 @@ public class RateLimiterFactoryTest {
     }
 
     @Test
-    public void acquireTest() {
+    public void acquireTest() throws Exception {
         RateLimiterFactory factory = new RateLimiterFactory();
         RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter3", 2, redissonService.getRLock("testPermitLock3"), redisService);
         RateLimiter rateLimiter = factory.getPermitLimiter(config);
 
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 10; i++) {
             System.out.println("acquire time: " + rateLimiter.acquire());
         }
+    }
+
+    /**
+     * 同步的for是计算的获取方法开始到结束的时间，但异步因为几个线程是一起启动的，所以最后完成的请求等待的时间就越长
+     * @throws Exception
+     */
+    @Test
+    public void acquireAsyncTest() throws Exception {
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig("testPermitLimiter4", 5, redissonService.getRLock("testPermitLock3"), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
+
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        for (int i = 1; i <= 10; i++) {
+            executor.execute(() -> System.out.println("acquire time: " + rateLimiter.acquire()));
+
+        }
+        Thread.sleep(2000L);
+        executor.shutdown();
+    }
+
+    /**
+     * 测试tryAcquire()等待时间
+     * NOTE: 用for循环调用的时候不会达到预期效果，出在超时时间上，每次都要休眠200ms(理论上)，所以永远不会超过超时时间500ms
+     */
+    @Test
+    public void tryAcquireTimeTest() throws Exception {
+        String name = "testLimiterTryAcquireTime";
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig(name, 5, 0.5F,redissonService.getRLock(name), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
+        int success = 0;
+        int fail = 0;
+
+        long start = System.currentTimeMillis();
+        for (int i = 1; i <= 10; i++) {
+            if (rateLimiter.tryAcquire()) {
+                System.out.println("cost: " + (System.currentTimeMillis() - start));
+                success++;
+                System.out.println(i + ": success");
+            } else {
+                fail++;
+                System.out.println(i + ": fail");
+            }
+        }
+        System.out.println("success: " + success);
+        System.out.println("fail: " + fail);
+    }
+
+    @Test
+    public void tryAcquireTimeAsyncTest() throws Exception {
+        String name = "testLimiterTryAcquireTimeAsync";
+        RateLimiterFactory factory = new RateLimiterFactory();
+        RateLimiterConfig config = new RateLimiterConfig(name, 5, 0.5F,redissonService.getRLock(name), redisService);
+        RateLimiter rateLimiter = factory.getPermitLimiter(config);
+        AtomicInteger success = new AtomicInteger();
+        AtomicInteger fail = new AtomicInteger();
+
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        long start = System.currentTimeMillis();
+        System.out.println("开始时间： " + start);
+        for (int i = 1; i <=10; i++) {
+            int finalI = i;
+            executor.execute(() -> {
+                long time1 = (System.currentTimeMillis() - start) * 1000;
+                System.out.println("任务： " + finalI + "即将启动， 花费: " + time1);
+                if (rateLimiter.tryAcquire()) {
+                    System.out.println("任务： " + finalI + "令牌获取成功: " + System.currentTimeMillis());
+                    long time2 = (System.currentTimeMillis() - start) * 1000;;
+                    System.out.println("任务： " + finalI + "完成: " + time2);
+//                    System.out.println("finalI: " + finalI + " cost: " + (System.currentTimeMillis() - start));
+                    System.out.println("任务： " + finalI + "执行了: " + (time2 - time1));
+                    success.getAndIncrement();
+                    System.out.println(finalI + ": success");
+                    System.out.println();
+                } else {
+                    fail.getAndIncrement();
+                    System.out.println(finalI + ": fail");
+                    System.out.println();
+                }
+            });
+        }
+        Thread.sleep(2000L);
+        System.out.println("success: " + success);
+        System.out.println("fail: " + fail);
+        executor.shutdown();
     }
 
     /**
@@ -211,10 +299,29 @@ public class RateLimiterFactoryTest {
 
         long start = System.currentTimeMillis();
         System.out.println("\nstart: " + start);
-        RateLimiter.sleepMicrosUninterruptibly(remainingMicros);
+        Limiter.sleepMicrosUninterruptibly(remainingMicros);
         long end = System.currentTimeMillis();
         System.out.println("end: " + end);
         System.out.println("duration: " + (end - start));
         System.out.println(saturatedAdd(start, 500L) - start);
+    }
+
+    @Test
+    public void tryFinallyTest() {
+        boolean condition = false;
+        String wait = "";
+        System.out.println("lock");
+        try {
+            if (condition) {
+                System.out.println("can't acquire!");
+                System.out.println("return false");
+            } else {
+                wait = "need to wait";
+            }
+        } finally {
+            System.out.println("unlock");
+        }
+        System.out.println(wait);
+        System.out.println("return true");
     }
 }

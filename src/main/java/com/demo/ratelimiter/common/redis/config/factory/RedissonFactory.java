@@ -19,7 +19,8 @@ public class RedissonFactory {
         String host = redissonConfig.getHost();
         String port = redissonConfig.getPort();
         int database = redissonConfig.getDatabase();
-        config.useSingleServer().setAddress("redis://" + host + ":" + port).setDatabase(database);
+        String password = redissonConfig.getPassword();
+        config.useSingleServer().setAddress("redis://" + host + ":" + port).setDatabase(database).setPassword(password);
         //添加主从配置
         // config.useMasterSlaveServers().setMasterAddress("").setPassword("").addSlaveAddress(new String[]{"",""});
         return Redisson.create(config);

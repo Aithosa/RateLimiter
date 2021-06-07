@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class GuavaLimiterTest extends RateLimiterFactoryTest {
     private static final int JOB_NUMS = 20;
@@ -56,5 +57,20 @@ public class GuavaLimiterTest extends RateLimiterFactoryTest {
 
         Thread.sleep(2500L);
         executor.shutdown();
+    }
+
+    @Test
+    public void SmoothWarmingUpTest() {
+        RateLimiter r = RateLimiter.create(5, 2, TimeUnit.SECONDS);
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
+        System.out.println(r.acquire());
     }
 }

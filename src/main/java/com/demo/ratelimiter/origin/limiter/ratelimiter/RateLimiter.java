@@ -38,7 +38,7 @@ public class RateLimiter implements Limiter {
     /**
      * 超时时间 - 由缓存队列比例计算
      */
-    private final long timeout;
+    private final long timeoutMicros;
 
     /**
      * 分布式互斥锁
@@ -57,9 +57,12 @@ public class RateLimiter implements Limiter {
         this.name = config.getName();
         this.permitsPerSecond = (config.getPermitsPerSecond() == 0L) ? 1000L : config.getPermitsPerSecond();
         this.maxPermits = config.getMaxPermits();
-        this.timeout = (long) (config.getCache() * config.getPermitsPerSecond() * TimeUnit.SECONDS.toMicros(1) / permitsPerSecond);
+        long intervalMicros = TimeUnit.SECONDS.toMicros(1) / permitsPerSecond;
+        this.timeoutMicros = (long) (config.getCache() * config.getPermitsPerSecond() * intervalMicros);
         this.lock = config.getLock();
         this.redisService = config.getRedisService();
+        log.info("Creat rateLimiter: {}, maxPermits: {}, permitsPerSecond: {}, intervalMicros:{}, timeoutMicros: {}",
+                name, maxPermits, permitsPerSecond, intervalMicros, timeoutMicros);
     }
 
     public double getRate() {
@@ -154,6 +157,8 @@ public class RateLimiter implements Limiter {
                 } finally {
                     unlock();
                 }
+            } else {
+                System.out.println("lock failed, try another");
             }
         }
     }
@@ -174,7 +179,7 @@ public class RateLimiter implements Limiter {
         // 生成还欠的令牌数需要花的时间
         long waitMicros = freshPermits * bucket.getIntervalMicros();
 
-        bucket.setNextFreeTicketMicros(saturatedAdd(bucket.getNextFreeTicketMicros(), waitMicros));
+        bucket.setNextFreeTicketMicros(Limiter.saturatedAdd(bucket.getNextFreeTicketMicros(), waitMicros));
         long returnValue = bucket.getNextFreeTicketMicros();
         // 这里不为负，最多为0，后面会休眠负令牌清零的时间，等待令牌恢复
         bucket.setStoredPermits(bucket.getStoredPermits() - storedPermitsToSpend);
@@ -194,7 +199,7 @@ public class RateLimiter implements Limiter {
     private long estimateEarliestAvailable(long requiredPermits, long nowMicros) {
         PermitBucket bucket = getBucket();
         bucket.reSync(nowMicros);
-//        long returnValue = bucket.getNextFreeTicketMicros();
+
         // 结合这次请求，当前总共能提供出去的令牌数
         long storedPermitsToSpend = min(requiredPermits, bucket.getStoredPermits());
         // 这次请求还欠的令牌数
@@ -202,8 +207,14 @@ public class RateLimiter implements Limiter {
         // 生成还欠的令牌数需要花的时间
         long waitMicros = freshPermits * bucket.getIntervalMicros();
 
-        return saturatedAdd(bucket.getNextFreeTicketMicros(), waitMicros);
+        return Limiter.saturatedAdd(bucket.getNextFreeTicketMicros(), waitMicros);
     }
+
+//    private long estimateEarliestAvailable(long requiredPermits, long nowMicros) {
+//        PermitBucket bucket = getBucket();
+//        bucket.reSync(nowMicros);
+//        return bucket.getNextFreeTicketMicros();
+//    }
 
     /**
      * 获取一个令牌
@@ -222,7 +233,7 @@ public class RateLimiter implements Limiter {
      */
     public double acquire(int permits) {
         long microsToWait = reserve(permits);
-        sleepMicrosUninterruptibly(microsToWait);
+        Limiter.sleepMicrosUninterruptibly(microsToWait);
         return 1.0 * microsToWait / SECONDS.toMicros(1L);
     }
 
@@ -233,14 +244,21 @@ public class RateLimiter implements Limiter {
         if (Constant.OFF.getCode().equals(switchConf)) {
             return true;
         }
-        return tryAcquire(1, timeout, TimeUnit.MILLISECONDS);
+        return tryAcquire(1, timeoutMicros, TimeUnit.MICROSECONDS);
     }
 
     /**
-     * 以毫秒为单位, 使用预设值的timeout
+     * 以微秒为单位, 使用预设值的timeout
      */
     public boolean tryAcquire() {
-        return tryAcquire(1, timeout, TimeUnit.MILLISECONDS);
+        return tryAcquire(1, timeoutMicros, TimeUnit.MICROSECONDS);
+    }
+
+    /**
+     * 以毫秒为单位
+     */
+    public boolean tryAcquire(long timeoutMillis) {
+        return tryAcquire(1, timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     public boolean tryAcquire(long timeout, TimeUnit unit) {
@@ -248,17 +266,10 @@ public class RateLimiter implements Limiter {
     }
 
     /**
-     * 以毫秒为单位
-     */
-    public boolean tryAcquire(long timeout) {
-        return tryAcquire(1, timeout, TimeUnit.MILLISECONDS);
-    }
-
-    /**
      * 获取成功或超时才返回
      *
      * @param permits 获取的令牌数
-     * @param timeout 超时时间，单位为秒
+     * @param timeout 超时时间，单位为微秒, 不需要转换
      */
     public boolean tryAcquire(long permits, long timeout, TimeUnit unit) {
         checkPermits(permits);
@@ -267,7 +278,7 @@ public class RateLimiter implements Limiter {
         while (true) {
             if (lock()) {
                 try {
-                    long nowMicros = unit.toMicros(System.currentTimeMillis());
+                    long nowMicros = MILLISECONDS.toMicros(System.currentTimeMillis());
                     if (!canAcquire(permits, nowMicros, timeoutMicros)) {
                         return false;
                     } else {
@@ -276,9 +287,9 @@ public class RateLimiter implements Limiter {
                 } finally {
                     unlock();
                 }
+                Limiter.sleepMicrosUninterruptibly(waitMicros);
+                return true;
             }
-            sleepMicrosUninterruptibly(waitMicros);
-            return true;
         }
     }
 
@@ -376,47 +387,5 @@ public class RateLimiter implements Limiter {
         if (permits < 0) {
             throw new IllegalArgumentException("Request/Put permits " + permits + " must be positive");
         }
-    }
-
-    public static void sleepMicrosUninterruptibly(long micros) {
-        if (micros > 0) {
-            sleepUninterruptibly(micros, MICROSECONDS);
-        }
-    }
-
-    public static void sleepUninterruptibly(long sleepFor, TimeUnit unit) {
-        boolean interrupted = false;
-        try {
-            long remainingNanos = unit.toNanos(sleepFor);
-            long end = System.nanoTime() + remainingNanos;
-            while (true) {
-                try {
-                    // TimeUnit.sleep() treats negative timeouts just like zero.
-                    NANOSECONDS.sleep(remainingNanos);
-                    return;
-                } catch (InterruptedException e) {
-                    interrupted = true;
-                    remainingNanos = end - System.nanoTime();
-                }
-            }
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    /**
-     * 暂时使用Guava的@beta(是否有替代函数)
-     */
-    public static long saturatedAdd(long a, long b) {
-        long naiveSum = a + b;
-        if ((a ^ b) < 0 | (a ^ naiveSum) >= 0) {
-            // If a and b have different signs or a has the same sign as the result then there was no
-            // overflow, return.
-            return naiveSum;
-        }
-        // we did over/under flow, if the sign is negative we should return MAX otherwise MIN
-        return Long.MAX_VALUE + ((naiveSum >>> (Long.SIZE - 1)) ^ 1);
     }
 }

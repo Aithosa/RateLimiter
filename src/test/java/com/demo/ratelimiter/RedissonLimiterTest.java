@@ -42,7 +42,7 @@ public class RedissonLimiterTest extends RateLimiterFactoryTest {
 
         long start = System.currentTimeMillis();
         for (int i = 0; i < 10; ++i) {
-            System.out.println("job " + i + ": " + rateLimiter.tryAcquire(200L, TimeUnit.MILLISECONDS) + " "
+            System.out.println("job " + i + ": " + rateLimiter.tryAcquire(200, TimeUnit.MILLISECONDS) + " "
                     + (System.currentTimeMillis() - start));
         }
     }
